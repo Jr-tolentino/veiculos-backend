@@ -1,4 +1,4 @@
-const {PrismaClient} = require('@prisma/client')
+const { PrismaClient } = require('@prisma/client')
 const prisma = new PrismaClient()
 const express = require('express')
 const server = express()
@@ -7,21 +7,15 @@ const cors = require('cors')
 server.use(cors())
 server.use(express.json())
 
-server.get('/veiculos', async (req, res)=>{
+server.get('/veiculos', async (req, res) => {
     const veiculos = await prisma.veiculos.findMany()
     return res.json(veiculos)
 })
 
 
-server.post('/veiculos', async (req, res)=>{
-    const veiculoPlaca = await prisma.veiculos.findUnique({
-        where: {
-            placa: req.body.placa
-        }
-    })
-
-    if (veiculoPlaca) {
-        return res.status(500).json({msg: 'Placa já cadastrada'})
+server.post('/veiculos', async (req, res) => {
+    if (await isPlacaCadastrada(req.body.placa)){
+        return res.status(500).json({msg:'Placa já cadastrada'})
     }else{
         const veiculoBody = req.body
         const veiculo = await prisma.veiculos.create({
@@ -29,29 +23,57 @@ server.post('/veiculos', async (req, res)=>{
         })
         return res.json(veiculo)
     }
+
 })
 
-server.delete('/veiculos/:placa', async (req,res)=>{
-        const veiculo = await prisma.veiculos.delete({
+
+
+server.delete('/veiculos/:placa', async (req, res) => {
+    const veiculo = await prisma.veiculos.delete({
         where: {
             placa: req.params.placa
         }
     })
+
+    return res.json(veiculo)
+})
+
+
+
+server.put('/veiculos/:placa', async (req, res) => {
+
+    if (await isPlacaCadastrada(req.body.placa)){
+        return res.status(500).json({msg:'Placa já cadastrada'})
+    }else{ if (!await isPlacaCadastrada(req.body.placa)){
+        return res.status(500).json({msg:'Placa já cadastrada'})
+    }else{
+        const veiculo = await prisma.veiculos.update({
+            data: req.body,
+            where: {
+                placa: req.params.placa
+            }
+        })
     
-    return res.json(veiculo)
+        return res.json(veiculo)
+    }
+}
 })
 
 
 
-server.put('/veiculos/:placa', async (req, res)=>{
-    const veiculo = await prisma.veiculos.update({
-        data: req.body, 
-        where: {
-            placa: req.params.placa
-        }
-    })
+async function isPlacaCadastrada(placa) {
+    try {
+        const veiculoPlaca = await prisma.veiculos.findUnique({
+            where: {
+                placa: placa
+            }
+        })
+        return !! veiculoPlaca
+     }catch{
+        return false
+     }
+}
 
-    return res.json(veiculo)
-})
+
 
 server.listen(3333)
